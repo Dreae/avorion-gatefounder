@@ -102,7 +102,7 @@ function PlayerGateBuilder.onNumberBoxChange(box)
 	local dist = __distance(x, y)
 
 	ui.distanceLabel.caption = string.format("Distance: %0.2f", dist)
-	if dist <= 20.0 then
+	if dist <= MAX_DISTANCE then
 		PlayerGateBuilder:info(string.format("Price: %s Cr", createMonetaryString(getPrice(dist))))
 	else
 		PlayerGateBuilder:error("Distance is too great")
@@ -123,7 +123,7 @@ function PlayerGateBuilder.onBtnBuildClick(x, y)
     if not buyer then return end
 	
 	local dist = __distance(x, y)
-	if dist > 20 then
+	if dist > MAX_DISTANCE then
 		PlayerGateBuilder:error("Distance is too great")
 		return
 	end
