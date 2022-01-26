@@ -9,6 +9,8 @@ include ("callable")
 include ("reconstructionutility")
 include ("gate_util")
 
+local FactionsMap = include ("factionsmap")
+
 local MAX_DISTANCE = 20
 
 -- Don't remove or alter the following comment, it tells the game the namespace this script lives in. If you remove it, the script will break.
@@ -103,9 +105,9 @@ function PlayerGateBuilder.onNumberBoxChange(box)
 
 	ui.distanceLabel.caption = string.format("Distance: %0.2f", dist)
 	if dist <= MAX_DISTANCE then
-		PlayerGateBuilder:info(string.format("Price: %s Cr", createMonetaryString(getPrice(dist))))
+		PlayerGateBuilder.info(string.format("Price: %s Cr", createMonetaryString(getPrice(dist))))
 	else
-		PlayerGateBuilder:error("Distance is too great")
+		PlayerGateBuilder.error("Distance is too great")
 	end
 end
 
@@ -124,23 +126,25 @@ function PlayerGateBuilder.onBtnBuildClick(x, y)
 	
 	local dist = __distance(x, y)
 	if dist > MAX_DISTANCE then
-		PlayerGateBuilder:error("Distance is too great")
+		PlayerGateBuilder.error("Distance is too great")
 		return
 	end
 
 	if not Galaxy():sectorLoaded(x, y) then
-		PlayerGateBuilder:warn("Sector is being loaded")
+		PlayerGateBuilder.warn("Sector is being loaded")
 		Galaxy():loadSector(x, y)
 		deferredCallback(1.0, "onBtnBuildClick", x, y)
 		return
 	end
 
 	local sectorView = Galaxy():getSectorView(x, y)
-	if buyer.isAlliance and sectorView.factionIndex ~= buyer.index then
-		PlayerGateBuilder:error("Target sector is not controlled by your faction.")
+	local factionsMap = FactionsMap(Server().seed)
+	local relation = buyer:getRelation(sectorView.factionIndex)
+	if not factionsMap:exists(sectorView.factionIndex) then
+		PlayerGateBuilder.error("Can not target No Man's space")
 		return
-	elseif buyer.isPlayer and sectorView.factionIndex ~= buyer.index then
-		PlayerGateBuilder:error("Target sector is not controlled by your faction.")
+	elseif relation.level < 80000 and relation.status ~= RelationStatus.Allies then
+		PlayerGateBuilder.error("Relations too low with target sector")
 		return
 	else
 		local price = getPrice(dist)
@@ -156,21 +160,21 @@ function PlayerGateBuilder.onBtnBuildClick(x, y)
 end
 callable(PlayerGateBuilder, "onBtnBuildClick")
 
-function PlayerGateBuilder.info(_, msg)
-	PlayerGateBuilder:showMsg(0, msg)
+function PlayerGateBuilder.info(msg)
+	PlayerGateBuilder.showMsg(0, msg)
 end
-function PlayerGateBuilder.warn(_, msg)
-	PlayerGateBuilder:showMsg(1, msg)
+function PlayerGateBuilder.warn(msg)
+	PlayerGateBuilder.showMsg(1, msg)
 end
-function PlayerGateBuilder.error(_, msg)
-	PlayerGateBuilder:showMsg(2, msg)
+function PlayerGateBuilder.error(msg)
+	PlayerGateBuilder.showMsg(2, msg)
 end
 
-function PlayerGateBuilder.showMsg(_, type, msg)
+function PlayerGateBuilder.showMsg(type, msg)
 	data.errMsg = msg
 	data.errType = type
 	if onServer() then
-		PlayerGateBuilder:sync()
+		PlayerGateBuilder.sync()
 	else
 		PlayerGateBuilder.sync(data)
 	end
