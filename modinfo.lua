@@ -11,13 +11,13 @@ meta =
     name = "gate_founder",
 
     -- Title of your mod that will be displayed to players
-    title = "Gate Founder",
+    title = "[2.0] Gate Founder",
 
     -- Type of your mod, either "mod" or "factionpack"
     type = "mod",
 
     -- Description of your mod that will be displayed to players
-    description = "Allows players to found star gates",
+    description = "Allows players to create star gates.",
 
     -- Insert all authors into this list
     authors = {"Dreae"},

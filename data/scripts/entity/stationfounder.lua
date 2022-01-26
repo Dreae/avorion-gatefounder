@@ -5,7 +5,7 @@ function StationFounder.initialize(shipyardFaction)
     --Add our new bank station to the list.
     table.insert(StationFounder.stations, 
         {
-            name = "Space Gate"%_t,
+            name = "Space Gate Builder"%_t,
             tooltip = "Local space gate. It will need to be paired with one in another sector"%_t,
             scripts = {
                 {script = "data/scripts/entity/player_gate_builder.lua"}
