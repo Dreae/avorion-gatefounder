@@ -115,7 +115,6 @@ function PlayerGateBuilder.onBtnBuildClick(x, y)
 	if onClient() then
 		local x = tonumber(ui.xInput.text) or 0
 		local y = tonumber(ui.yInput.text) or 0
-		print("invoking server build", x, y)
 		invokeServerFunction("onBtnBuildClick", x, y)
 
 		return
