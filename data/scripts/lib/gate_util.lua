@@ -5,7 +5,14 @@ local StyleGenerator = include ("internal/stylegenerator.lua")
 local PlanGenerator = include ("plangenerator")
 local Placer = include ("placer")
 
-function make_gate(x, y, position, factionIndex)
+function make_gate(x, y, factionIndex)
+	local local_x, local_y = Sector():getCoordinates()
+	local dir = vec3(x - local_x, 0, y - local_y)
+	normalize_ip(dir)
+
+	local position = MatrixLookUp(dir, vec3(0, 1, 0))
+	position.pos = dir * 2000
+
     local gateDesc = EntityDescriptor()
 	gateDesc:addComponents(
 		ComponentType.Plan,

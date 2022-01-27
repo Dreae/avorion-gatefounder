@@ -74,9 +74,12 @@ function PlayerGateBuilder.initUI()
     yTextBox.allowedCharacters = "-0123456789"
     yTextBox.clearOnClick = 1
 	ui.yInput = yTextBox
+
+	ui.yInput.tabTarget = ui.xInput
+	ui.xInput.tabTarget = ui.yInput
 	
 	local infoVSplit = UIVerticalSplitter(hSplit:partition(1), 0, 12, 0.5)
-	ui.distanceLabel = window:createLabel(infoVSplit.left, "Distance: 0.0", 14)
+	ui.distanceLabel = window:createLabel(infoVSplit.left, "Distance: 0.0"%_t, 14)
 	window:createLabel(infoVSplit.right, string.format("Max distance %d", MAX_DISTANCE), 14)
 
 	local checkVSplit = UIVerticalSplitter(hSplit:partition(2), 2, 12, 0.5)
@@ -87,10 +90,10 @@ function PlayerGateBuilder.initUI()
 	ui.errorLabel:setLeftAligned()
 
     --Build Button
-    local btnBuild = window:createButton(checkVSplit.left, "Build", "onBtnBuildClick")
-    btnBuild.maxTextSize = 14
-    btnBuild.width = 150
-    btnBuild.height = 30
+    ui.btnBuild = window:createButton(checkVSplit.left, "Build"%_t, "onBtnBuildClick")
+    ui.btnBuild.maxTextSize = 14
+    ui.btnBuild.width = 150
+    ui.btnBuild.height = 30
 end
 
 function __distance(x, y)
@@ -107,7 +110,7 @@ function PlayerGateBuilder.onNumberBoxChange(box)
 	if dist <= MAX_DISTANCE then
 		PlayerGateBuilder.info(string.format("Price: %s Cr", createMonetaryString(getPrice(dist))))
 	else
-		PlayerGateBuilder.error("Distance is too great")
+		PlayerGateBuilder.error("Distance is too great"%_t)
 	end
 end
 
@@ -116,48 +119,73 @@ function PlayerGateBuilder.onBtnBuildClick(x, y)
 		local x = tonumber(ui.xInput.text) or 0
 		local y = tonumber(ui.yInput.text) or 0
 		invokeServerFunction("onBtnBuildClick", x, y)
+		ui.btnBuild.active = false
+		ui.yInput.editable = false
+		ui.xInput.editable = false
+		ui.yInput.clearOnClick = false
+		ui.xInput.clearOnClick = false
 
 		return
 	end
 
 	local buyer, _, player = checkEntityInteractionPermissions(Entity(), AlliancePrivilege.FoundStations)
-    if not buyer then return end
+    if not buyer then 	
+		invokeClientFunction(Player(callingPlayer), "onBuildDone")
+		return 
+	end
 	
 	local dist = __distance(x, y)
 	if dist > MAX_DISTANCE then
-		PlayerGateBuilder.error("Distance is too great")
+		PlayerGateBuilder.error("Distance is too great"%_t)
+		invokeClientFunction(Player(callingPlayer), "onBuildDone")
 		return
 	end
 
 	if not Galaxy():sectorLoaded(x, y) then
-		PlayerGateBuilder.warn("Sector is being loaded")
+		PlayerGateBuilder.warn("Sector is being loaded"%_t)
 		Galaxy():loadSector(x, y)
-		deferredCallback(1.0, "onBtnBuildClick", x, y)
+		deferredCallback(1.0, "retryBuild", callingPlayer)
 		return
 	end
 
 	local sectorView = Galaxy():getSectorView(x, y)
-	local factionsMap = FactionsMap(Server().seed)
 	local relation = buyer:getRelation(sectorView.factionIndex)
-	if not factionsMap:exists(sectorView.factionIndex) then
-		PlayerGateBuilder.error("Can not target No Man's space")
-		return
+	local faction = Faction(sectorView.factionIndex)
+	if not faction then
+		PlayerGateBuilder.error("Can not target No Man's space"%_t)
 	elseif relation.level < 80000 and relation.status ~= RelationStatus.Allies then
-		PlayerGateBuilder.error("Relations too low with target sector")
-		return
+		PlayerGateBuilder.error("Relations too low with target sector"%_t)
 	else
 		local price = getPrice(dist)
 		local canPay, msg, args = buyer:canPay(price)
 		if not canPay then
 			player:sendChatMessage(Entity(), 1, msg, unpack(args))
-			return
+			PlayerGateBuilder.error("Not enough money"%_t)
+		else
+			buyer:pay("Paid %1% credits to build space gate"%_t, price)
+			PlayerGateBuilder.info("Gate built")
+			buildPlayerGates(x, y, buyer, player)
 		end
-
-		buyer:pay("Paid %1% credits to build space gate"%_T, price)
-		buildPlayerGates(x, y, buyer, player)
 	end
+
+	invokeClientFunction(Player(callingPlayer), "onBuildDone")
 end
 callable(PlayerGateBuilder, "onBtnBuildClick")
+
+function PlayerGateBuilder.onBuildDone()
+	ui.btnBuild.active = true
+	ui.yInput.editable = true
+	ui.xInput.editable = true
+	ui.yInput.clearOnClick = true
+	ui.xInput.clearOnClick = true
+end
+
+function PlayerGateBuilder.retryBuild(playerIndex)
+	local player = Player(playerIndex)
+	if player then
+		invokeClientFunction(player, "onBtnBuildClick")
+	end
+end
 
 function PlayerGateBuilder.info(msg)
 	PlayerGateBuilder.showMsg(0, msg)
@@ -219,10 +247,7 @@ end
 function buildPlayerGates(x, y, buyer, player)
 	local station = Entity()
 
-	local position = station.position
 	local factionIndex = station.factionIndex
-
-	station:moveBy(vec3(0, 300, 0))
 
 	-- Remove player from builder and delete it before spawning the gate
 	if player.craftIndex == station.index then
@@ -238,8 +263,7 @@ function buildPlayerGates(x, y, buyer, player)
 
 	removeReconstructionKits(buyer, name)
 
-
-	make_gate(x, y, position, factionIndex)
+	make_gate(x, y, factionIndex)
 
 	local a, b = Sector():getCoordinates()
 	code = [[
